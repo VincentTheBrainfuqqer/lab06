@@ -1,53 +1,141 @@
-# Лабораторная работа №4
+# Лабораторная работа №5
 
 [![CMake CI](https://github.com/VincentTheBrainfuqqer/lab05/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentTheBrainfuqqer/lab05/actions/workflows/ci.yml)
 
 ## Цель работы
 
-Познакомиться с системой непрерывной интеграции и настроить автоматическую сборку CMake-проекта.
+Изучить основы модульного тестирования в C++ на примере фреймворка Google Test.
 
 ## Задание
 
-В лабораторной работе требовалось настроить автоматическую сборку проекта при помощи CI-сервиса.
+В ходе лабораторной работы необходимо:
 
-Так как Travis CI сейчас неудобно использовать из-за платного доступа, вместо него был использован GitHub Actions.
+- создать публичный репозиторий `lab05`;
+- использовать проект из предыдущей лабораторной работы как основу;
+- подключить Google Test;
+- добавить тесты для функции `print`;
+- настроить сборку проекта с тестами;
+- настроить автоматическую проверку через GitHub Actions;
+- подготовить отчет.
 
 ## Выполнение работы
 
-В качестве основы был использован проект из лабораторной работы №3.
+Сначала был создан репозиторий `lab05`, после чего в него была скопирована структура проекта из лабораторной работы №4.
 
-Для настройки автоматической сборки была создана директория:
-
-```text
-.github/workflows
+```bash
+git clone https://github.com/VincentTheBrainfuqqer/lab04 lab05
+cd lab05
+git remote remove origin
+git remote add origin https://github.com/VincentTheBrainfuqqer/lab05.git
 ```
 
-В ней был создан файл:
+Для подключения Google Test был создан каталог `third-party`, после чего фреймворк был добавлен как submodule.
 
-```text
-ci.yml
+```bash
+mkdir third-party
+git submodule add https://github.com/google/googletest third-party/gtest
+cd third-party/gtest
+git checkout release-1.8.1
+cd ../..
 ```
 
-Итоговая структура проекта:
+После этого в `CMakeLists.txt` была добавлена возможность включать сборку тестов через параметр `BUILD_TESTS`.
 
-```text
-lab05/
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── examples/
-│   └── example1.cpp
-├── include/
-│   └── print.hpp
-├── sources/
-│   └── print.cpp
-├── CMakeLists.txt
-└── README.md
+```cmake
+option(BUILD_TESTS "Build tests" OFF)
 ```
 
-## Файл GitHub Actions
+Также был добавлен блок для сборки тестов:
 
-```yml
+```cmake
+if(BUILD_TESTS)
+    enable_testing()
+
+    add_subdirectory(third-party/gtest)
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(gtest PRIVATE -Wno-error=maybe-uninitialized)
+        target_compile_options(gtest_main PRIVATE -Wno-error=maybe-uninitialized)
+    endif()
+
+    file(GLOB TEST_SOURCES tests/*.cpp)
+
+    add_executable(check ${TEST_SOURCES})
+    target_link_libraries(check print gtest_main)
+
+    add_test(NAME check COMMAND check)
+endif()
+```
+
+Параметр `BUILD_TESTS` позволяет собирать проект как с тестами, так и без них.
+
+Был создан каталог `tests`, в который был добавлен файл `test1.cpp`.
+
+```cpp
+#include <print.hpp>
+
+#include <gtest/gtest.h>
+
+#include <fstream>
+#include <string>
+
+TEST(Print, InFileStream)
+{
+    std::string filepath = "file.txt";
+    std::string text = "hello";
+
+    std::ofstream out{filepath};
+    print(text, out);
+    out.close();
+
+    std::string result;
+    std::ifstream in{filepath};
+    in >> result;
+
+    EXPECT_EQ(result, text);
+}
+```
+
+В этом тесте проверяется работа функции `print` при выводе строки в файловый поток.
+
+Сначала создается файл `file.txt`, затем в него записывается строка `hello`. После этого файл открывается для чтения, считанное значение сравнивается с исходной строкой.
+
+Если функция работает правильно, тест завершается успешно.
+
+## Сборка проекта
+
+Для сборки проекта с тестами использовались следующие команды:
+
+```bash
+cmake -H. -B_build -DBUILD_TESTS=ON
+cmake --build _build
+```
+
+После сборки был запущен тест:
+
+```bash
+cmake --build _build --target test -- ARGS=--verbose
+```
+
+Также тест можно запустить напрямую:
+
+```bash
+_build/check
+```
+
+## GitHub Actions
+
+Вместо Travis CI был использован GitHub Actions.
+
+Для этого был создан файл:
+
+```text
+.github/workflows/ci.yml
+```
+
+Содержимое workflow:
+
+```yaml
 name: CMake CI
 
 on:
@@ -63,62 +151,68 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Configure CMake
-        run: cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install
+      - name: Configure
+        run: cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install -DBUILD_TESTS=ON
 
       - name: Build
         run: cmake --build _build
+
+      - name: Run tests
+        run: cmake --build _build --target test -- ARGS=--verbose
 
       - name: Install
         run: cmake --build _build --target install
 ```
 
-## Описание workflow
+Параметр:
 
-Workflow запускается автоматически при каждом `push` или `pull request` в ветку `main`.
-
-Он выполняет следующие действия:
-
-1. Загружает код репозитория.
-2. Конфигурирует проект с помощью CMake.
-3. Собирает проект.
-4. Выполняет установку проекта в директорию `_install`.
-
-## Проверка сборки локально
-
-Для локальной проверки использовались команды:
-
-```bash
-cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install
-cmake --build _build
-cmake --build _build --target install
+```yaml
+submodules: recursive
 ```
 
-После сборки можно запустить пример:
+нужен для того, чтобы GitHub Actions автоматически загрузил Google Test, так как он подключен как submodule.
 
-```bash
-_build/example1
-```
-
-Результат работы программы:
+## Структура проекта
 
 ```text
-hello
+lab05/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── examples/
+│   ├── example1.cpp
+│   └── example2.cpp
+├── include/
+│   └── print.hpp
+├── sources/
+│   └── print.cpp
+├── tests/
+│   └── test1.cpp
+├── third-party/
+│   └── gtest/
+├── CMakeLists.txt
+└── README.md
 ```
 
-## Отправка проекта на GitHub
+## Результат
 
-Для отправки изменений использовались команды:
+В результате выполнения лабораторной работы:
 
-```bash
-git add .
-git commit -m "added GitHub Actions CI"
-git push -u origin main
-```
+- был создан проект `lab05`;
+- был подключен фреймворк Google Test;
+- был написан тест для функции `print`;
+- была настроена сборка проекта с тестами;
+- была настроена автоматическая проверка через GitHub Actions;
+- проект успешно собирается и проходит тестирование.
 
 ## Вывод
 
-В ходе лабораторной работы была настроена система непрерывной интеграции для CMake-проекта.
+В ходе лабораторной работы был изучен принцип подключения фреймворка Google Test к C++ проекту.
 
-Вместо Travis CI был использован GitHub Actions. После каждого обновления репозитория GitHub автоматически запускает сборку проекта и проверяет, что проект успешно компилируется.
+Была добавлена возможность собирать проект с тестами при помощи параметра `BUILD_TESTS`.  
+Также был создан простой unit-тест, который проверяет корректность работы функции `print`.
+
+Дополнительно была настроена автоматическая сборка и проверка проекта через GitHub Actions.
