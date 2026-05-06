@@ -1,6 +1,6 @@
 # Лабораторная работа №4
 
-[![CMake CI](https://github.com/VincentTheBrainfuqqer/lab04/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentTheBrainfuqqer/lab04/actions/workflows/ci.yml)
+[![CMake CI](https://github.com/VincentTheBrainfuqqer/lab05/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentTheBrainfuqqer/lab05/actions/workflows/ci.yml)
 
 ## Цель работы
 
@@ -31,7 +31,7 @@ ci.yml
 Итоговая структура проекта:
 
 ```text
-lab04/
+lab05/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml

@@ -1,47 +1,29 @@
 name: CMake CI
 
-
-
 on:
-
   push:
-
     branches: [ main ]
-
   pull_request:
-
     branches: [ main ]
-
-
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
-
-
     steps:
-
       - name: Checkout repository
-
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-
-
-      - name: Configure CMake
-
-        run: cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install
-
-
+      - name: Configure
+        run: cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install -DBUILD_TESTS=ON
 
       - name: Build
-
         run: cmake --build _build
 
-
+      - name: Run tests
+        run: cmake --build _build --target test -- ARGS=--verbose
 
       - name: Install
-
         run: cmake --build _build --target install
