@@ -1,137 +1,124 @@
+# Лабораторная работа №4
+
 [![CMake CI](https://github.com/VincentTheBrainfuqqer/lab04/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentTheBrainfuqqer/lab04/actions/workflows/ci.yml)
-# lab03
 
-Laboratory work 3.
+## Цель работы
 
-Topic: project build automation using CMake.
+Познакомиться с системой непрерывной интеграции и настроить автоматическую сборку CMake-проекта.
 
-## Task
+## Задание
 
-The project from `lab02` was used as a base.  
-CMake configuration was added for building the static library `print` and example applications.
+В лабораторной работе требовалось настроить автоматическую сборку проекта при помощи CI-сервиса.
 
-Homework part was not completed because it is not required.
+Так как Travis CI сейчас неудобно использовать из-за платного доступа, вместо него был использован GitHub Actions.
 
-## Project structure
+## Выполнение работы
+
+В качестве основы был использован проект из лабораторной работы №3.
+
+Для настройки автоматической сборки была создана директория:
 
 ```text
-.
-├── CMakeLists.txt
-├── README.md
-├── examples
-│   ├── example1.cpp
-│   └── example2.cpp
-├── include
+.github/workflows
+```
+
+В ней был создан файл:
+
+```text
+ci.yml
+```
+
+Итоговая структура проекта:
+
+```text
+lab04/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── examples/
+│   └── example1.cpp
+├── include/
 │   └── print.hpp
-└── sources
-    └── print.cpp
+├── sources/
+│   └── print.cpp
+├── CMakeLists.txt
+└── README.md
 ```
 
-## Files
+## Файл GitHub Actions
 
-### `include/print.hpp`
+```yml
+name: CMake CI
 
-Header file with function declarations.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-### `sources/print.cpp`
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-Source file with function definitions.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-### `examples/example1.cpp`
+      - name: Configure CMake
+        run: cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install
 
-Example that prints text to standard output.
+      - name: Build
+        run: cmake --build _build
 
-### `examples/example2.cpp`
-
-Example that prints text to a file.
-
-### `CMakeLists.txt`
-
-CMake build configuration file.
-
-It builds:
-
-- static library `print`;
-- executable `example1`;
-- executable `example2`.
-
-## Build
-
-To configure the project:
-
-```bash
-cmake -H. -B_build
+      - name: Install
+        run: cmake --build _build --target install
 ```
 
-To build the project:
+## Описание workflow
 
-```bash
-cmake --build _build
-```
+Workflow запускается автоматически при каждом `push` или `pull request` в ветку `main`.
 
-## Run examples
+Он выполняет следующие действия:
 
-Run first example:
+1. Загружает код репозитория.
+2. Конфигурирует проект с помощью CMake.
+3. Собирает проект.
+4. Выполняет установку проекта в директорию `_install`.
 
-```bash
-_build/example1 && echo
-```
+## Проверка сборки локально
 
-Output:
-
-```text
-hello
-```
-
-Run second example:
-
-```bash
-_build/example2
-cat log.txt && echo
-```
-
-Output:
-
-```text
-hello
-```
-
-## Install
-
-Configure project with install directory:
+Для локальной проверки использовались команды:
 
 ```bash
 cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install
-```
-
-Build and install:
-
-```bash
+cmake --build _build
 cmake --build _build --target install
 ```
 
-Check install directory:
+После сборки можно запустить пример:
 
 ```bash
-tree _install
+_build/example1
 ```
 
-Expected structure:
+Результат работы программы:
 
 ```text
-_install
-├── bin
-│   ├── example1
-│   └── example2
-├── include
-│   └── print.hpp
-└── lib
-    └── libprint.a
+hello
 ```
 
-## Result
+## Отправка проекта на GitHub
 
-The project was successfully configured and built using CMake.
+Для отправки изменений использовались команды:
 
-The static library `print` was created.  
-The example applications `example1` and `example2` were also built and tested.
+```bash
+git add .
+git commit -m "added GitHub Actions CI"
+git push -u origin main
+```
+
+## Вывод
+
+В ходе лабораторной работы была настроена система непрерывной интеграции для CMake-проекта.
+
+Вместо Travis CI был использован GitHub Actions. После каждого обновления репозитория GitHub автоматически запускает сборку проекта и проверяет, что проект успешно компилируется.
