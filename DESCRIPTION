@@ -1,0 +1,4 @@
+Solver is a simple console application based on the print library.
+
+The project contains a static C++ library, examples, tests and CPack configuration.
+It is used to demonstrate packaging with CPack and automatic release publishing with GitHub Actions.

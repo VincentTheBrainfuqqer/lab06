@@ -1,218 +1,232 @@
-# Лабораторная работа №5
+# Лабораторная работа №6
 
-[![CMake CI](https://github.com/VincentTheBrainfuqqer/lab05/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentTheBrainfuqqer/lab05/actions/workflows/ci.yml)
+![CMake CI](https://github.com/VincentTheBrainfuqqer/lab06/actions/workflows/ci.yml/badge.svg)
 
 ## Цель работы
 
-Изучить основы модульного тестирования в C++ на примере фреймворка Google Test.
+Изучить средства пакетирования C++ проектов на примере CPack.
 
 ## Задание
 
 В ходе лабораторной работы необходимо:
 
-- создать публичный репозиторий `lab05`;
-- использовать проект из предыдущей лабораторной работы как основу;
-- подключить Google Test;
-- добавить тесты для функции `print`;
-- настроить сборку проекта с тестами;
-- настроить автоматическую проверку через GitHub Actions;
-- подготовить отчет.
+* создать публичный репозиторий `lab06`;
+* использовать проект из предыдущей лабораторной работы как основу;
+* настроить CPack;
+* собрать пакет проекта;
+* подготовить отчет.
+
+В домашней части необходимо настроить сборку пакетов для релизов. При создании git-тега должны собираться архивы исходного кода и пакеты с бинарным файлом `solver`.
 
 ## Выполнение работы
 
-Сначала был создан репозиторий `lab05`, после чего в него была скопирована структура проекта из лабораторной работы №4.
+Сначала был создан репозиторий `lab06`, после чего в него была скопирована структура проекта из лабораторной работы №5.
 
-```bash
-git clone https://github.com/VincentTheBrainfuqqer/lab04 lab05
-cd lab05
-git remote remove origin
-git remote add origin https://github.com/VincentTheBrainfuqqer/lab05.git
-```
+    git clone --recurse-submodules https://github.com/VincentTheBrainfuqqer/lab05 projects/lab06
+    cd projects/lab06
+    git remote remove origin
+    git remote add origin https://github.com/VincentTheBrainfuqqer/lab06.git
+    git branch -M main
 
-Для подключения Google Test был создан каталог `third-party`, после чего фреймворк был добавлен как submodule.
+В файл `CMakeLists.txt` была добавлена информация о версии проекта.
 
-```bash
-mkdir third-party
-git submodule add https://github.com/google/googletest third-party/gtest
-cd third-party/gtest
-git checkout release-1.8.1
-cd ../..
-```
+    set(PRINT_VERSION_MAJOR 0)
+    set(PRINT_VERSION_MINOR 1)
+    set(PRINT_VERSION_PATCH 0)
+    set(PRINT_VERSION_TWEAK 0)
 
-После этого в `CMakeLists.txt` была добавлена возможность включать сборку тестов через параметр `BUILD_TESTS`.
+    set(PRINT_VERSION
+        ${PRINT_VERSION_MAJOR}.${PRINT_VERSION_MINOR}.${PRINT_VERSION_PATCH}.${PRINT_VERSION_TWEAK}
+    )
 
-```cmake
-option(BUILD_TESTS "Build tests" OFF)
-```
+    set(PRINT_VERSION_STRING "v${PRINT_VERSION}")
 
-Также был добавлен блок для сборки тестов:
+Также был добавлен исполняемый файл `solver`.
 
-```cmake
-if(BUILD_TESTS)
-    enable_testing()
+    add_executable(solver examples/example1.cpp)
+    target_link_libraries(solver print)
 
-    add_subdirectory(third-party/gtest)
+После этого были добавлены правила установки для библиотеки, заголовочного файла и исполняемого файла.
 
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        target_compile_options(gtest PRIVATE -Wno-error=maybe-uninitialized)
-        target_compile_options(gtest_main PRIVATE -Wno-error=maybe-uninitialized)
+    install(TARGETS print
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+    )
+
+    install(TARGETS solver
+        RUNTIME DESTINATION bin
+    )
+
+    install(FILES include/print.hpp
+        DESTINATION include
+    )
+
+Для настройки CPack был создан файл `CPackConfig.cmake`.
+
+    include(InstallRequiredSystemLibraries)
+
+    set(CPACK_PACKAGE_NAME "solver")
+    set(CPACK_PACKAGE_VENDOR "VincentTheBrainfuqqer")
+    set(CPACK_PACKAGE_CONTACT "VincentTheBrainfuqqer@users.noreply.github.com")
+
+    set(CPACK_PACKAGE_VERSION_MAJOR ${PRINT_VERSION_MAJOR})
+    set(CPACK_PACKAGE_VERSION_MINOR ${PRINT_VERSION_MINOR})
+    set(CPACK_PACKAGE_VERSION_PATCH ${PRINT_VERSION_PATCH})
+    set(CPACK_PACKAGE_VERSION_TWEAK ${PRINT_VERSION_TWEAK})
+    set(CPACK_PACKAGE_VERSION ${PRINT_VERSION})
+
+    set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/DESCRIPTION)
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "simple console solver application")
+
+    set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE)
+    set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
+
+    set(CPACK_PACKAGE_FILE_NAME
+        "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}"
+    )
+
+    set(CPACK_SOURCE_PACKAGE_FILE_NAME
+        "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-source"
+    )
+
+    set(CPACK_SOURCE_GENERATOR "TGZ;ZIP")
+
+    set(CPACK_SOURCE_IGNORE_FILES
+        "/_build/"
+        "/artifacts/"
+        "/.git/"
+        "/.github/"
+        "~$"
+    )
+
+    if(UNIX AND NOT APPLE)
+        set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
     endif()
 
-    file(GLOB TEST_SOURCES tests/*.cpp)
+    set(CPACK_RPM_PACKAGE_NAME "solver")
+    set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+    set(CPACK_RPM_PACKAGE_GROUP "Development/Tools")
+    set(CPACK_RPM_PACKAGE_RELEASE 1)
+    set(CPACK_RPM_CHANGELOG_FILE ${CMAKE_CURRENT_SOURCE_DIR}/ChangeLog.md)
 
-    add_executable(check ${TEST_SOURCES})
-    target_link_libraries(check print gtest_main)
+    set(CPACK_DEBIAN_PACKAGE_NAME "solver")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "VincentTheBrainfuqqer")
+    set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
+    set(CPACK_DEBIAN_PACKAGE_RELEASE 1)
 
-    add_test(NAME check COMMAND check)
-endif()
-```
+    set(CPACK_WIX_UPGRADE_GUID "7D4A72B7-56C0-4C6A-9B34-9E2B71AF0D10")
 
-Параметр `BUILD_TESTS` позволяет собирать проект как с тестами, так и без них.
+    include(CPack)
 
-Был создан каталог `tests`, в который был добавлен файл `test1.cpp`.
+В конец файла `CMakeLists.txt` был подключен файл с настройками CPack.
 
-```cpp
-#include <print.hpp>
+    include(CPackConfig.cmake)
 
-#include <gtest/gtest.h>
+Также были созданы файлы `DESCRIPTION` и `ChangeLog.md`.
 
-#include <fstream>
-#include <string>
+Файл `DESCRIPTION` содержит краткое описание проекта.
 
-TEST(Print, InFileStream)
-{
-    std::string filepath = "file.txt";
-    std::string text = "hello";
+    Solver is a simple console application based on the print library.
 
-    std::ofstream out{filepath};
-    print(text, out);
-    out.close();
+    The project contains a static C++ library, examples, tests and CPack configuration.
+    It is used to demonstrate packaging with CPack and automatic release publishing with GitHub Actions.
 
-    std::string result;
-    std::ifstream in{filepath};
-    in >> result;
+Файл `ChangeLog.md` содержит информацию о первом релизе.
 
-    EXPECT_EQ(result, text);
-}
-```
-
-В этом тесте проверяется работа функции `print` при выводе строки в файловый поток.
-
-Сначала создается файл `file.txt`, затем в него записывается строка `hello`. После этого файл открывается для чтения, считанное значение сравнивается с исходной строкой.
-
-Если функция работает правильно, тест завершается успешно.
+    * Wed May 13 2026 VincentTheBrainfuqqer <VincentTheBrainfuqqer@users.noreply.github.com> 0.1.0.0
+    - Initial release
+    - Added CPack configuration
+    - Added solver executable
+    - Added release packages
 
 ## Сборка проекта
 
-Для сборки проекта с тестами использовались следующие команды:
+Для сборки проекта использовались команды:
 
-```bash
-cmake -H. -B_build -DBUILD_TESTS=ON
-cmake --build _build
-```
+    cmake -H. -B_build -DBUILD_TESTS=ON
+    cmake --build _build
 
-После сборки был запущен тест:
+Для запуска тестов использовалась команда:
 
-```bash
-cmake --build _build --target test -- ARGS=--verbose
-```
+    cmake --build _build --target test -- ARGS=--verbose
 
-Также тест можно запустить напрямую:
+Для сборки пакета использовалась команда:
 
-```bash
-_build/check
-```
+    cmake --build _build --target package
+
+После сборки в директории `_build` был создан архив проекта.
 
 ## GitHub Actions
 
-Вместо Travis CI был использован GitHub Actions.
+Вместо Travis CI и AppVeyor был использован GitHub Actions.
 
 Для этого был создан файл:
 
-```text
-.github/workflows/ci.yml
-```
+    .github/workflows/ci.yml
 
-Содержимое workflow:
+Обычная сборка запускается при каждом push в ветку `main`.
 
-```yaml
-name: CMake CI
+При создании git-тега вида `v*` запускается сборка релиза.
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+На Linux собираются пакеты:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+* `.tar.gz`
+* `.zip`
+* `.deb`
+* `.rpm`
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+На macOS собирается пакет:
 
-      - name: Configure
-        run: cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install -DBUILD_TESTS=ON
+* `.dmg`
 
-      - name: Build
-        run: cmake --build _build
+На Windows собирается пакет:
 
-      - name: Run tests
-        run: cmake --build _build --target test -- ARGS=--verbose
+* `.msi`
 
-      - name: Install
-        run: cmake --build _build --target install
-```
+После сборки все файлы автоматически загружаются в GitHub Releases.
 
-Параметр:
+Для создания релиза использовались команды:
 
-```yaml
-submodules: recursive
-```
-
-нужен для того, чтобы GitHub Actions автоматически загрузил Google Test, так как он подключен как submodule.
+    git tag v0.1.0.0
+    git push origin v0.1.0.0
 
 ## Структура проекта
 
-```text
-lab05/
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── examples/
-│   ├── example1.cpp
-│   └── example2.cpp
-├── include/
-│   └── print.hpp
-├── sources/
-│   └── print.cpp
-├── tests/
-│   └── test1.cpp
-├── third-party/
-│   └── gtest/
-├── CMakeLists.txt
-└── README.md
-```
+    lab06/
+    ├── .github/
+    │   └── workflows/
+    │       └── ci.yml
+    ├── examples/
+    │   ├── example1.cpp
+    │   └── example2.cpp
+    ├── include/
+    │   └── print.hpp
+    ├── sources/
+    │   └── print.cpp
+    ├── tests/
+    │   └── test1.cpp
+    ├── third-party/
+    │   └── gtest/
+    ├── CMakeLists.txt
+    ├── CPackConfig.cmake
+    ├── ChangeLog.md
+    ├── DESCRIPTION
+    ├── LICENSE
+    └── README.md
 
 ## Результат
 
 В результате выполнения лабораторной работы:
 
-- был создан проект `lab05`;
-- был подключен фреймворк Google Test;
-- был написан тест для функции `print`;
-- была настроена сборка проекта с тестами;
-- была настроена автоматическая проверка через GitHub Actions;
-- проект успешно собирается и проходит тестирование.
+* был создан проект `lab06`;
+* была настроена упаковка проекта с помощью CPack;
+* был добавлен исполняемый файл `solver`;
+* была настроена сборка пакетов;
+* была настроена автоматическая публикация релизов через GitHub Actions;
+* проект успешно собирается и проходит тестирование.
 
 ## Вывод
 
-В ходе лабораторной работы был изучен принцип подключения фреймворка Google Test к C++ проекту.
+В ходе лабораторной работы были изучены основы пакетирования C++ проекта с помощью CPack.
 
-Была добавлена возможность собирать проект с тестами при помощи параметра `BUILD_TESTS`.  
-Также был создан простой unit-тест, который проверяет корректность работы функции `print`.
-
-Дополнительно была настроена автоматическая сборка и проверка проекта через GitHub Actions.
+Также была выполнена домашняя часть: при создании git-тега GitHub Actions автоматически собирает архивы исходного кода и бинарные пакеты для разных операционных систем.
