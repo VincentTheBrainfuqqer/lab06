@@ -33,7 +33,7 @@ jobs:
       - name: Install
         run: cmake --build _build --target install
 
-      - name: Build TGZ package
+      - name: Build package
         run: cmake --build _build --target package
 
   release:
@@ -78,7 +78,7 @@ jobs:
       - name: Run tests
         run: cmake --build _build --target test --config Release -- ARGS=--verbose
 
-      - name: Build binary packages on Linux and macOS
+      - name: Build packages on Linux and macOS
         if: runner.os != 'Windows'
         run: |
           cd _build
@@ -90,7 +90,7 @@ jobs:
           cd _build
           cpack --config CPackSourceConfig.cmake -G "TGZ;ZIP"
 
-      - name: Build binary packages on Windows
+      - name: Build packages on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
